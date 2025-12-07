@@ -1,5 +1,5 @@
 from fastmcp import FastMCP
-import math_mcp
+
 
 math_mcp = FastMCP("Math MCP Server")
 
@@ -171,7 +171,6 @@ def get_primes(index: int) -> str:
 
 
 @math_mcp.prompt
-
 def solve_equation_prompt() -> str:
     return "Solve the equation"
 
