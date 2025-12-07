@@ -1,10 +1,32 @@
-import authlib.integrations.base_client.framework_integration
+import _compression
 import asyncio
 from fastmcp import Client
-from fastmcp.client.transports import PythonStdioTransport
+from fastmcp.client.transports import PythonStdioTransport, StreamableHttpTransport
 
-# client = Client("http://localhost:8000/mcp")
-client = Client(transport=PythonStdioTransport(script_path="notes.py:notes_mcp"))
+# (1)
+# You have to run the server first
+# client = Client("http://localhost:8000/mcp") 
+# or
+# transport = StreamableHttpTransport(url="http://localhost:8000/mcp")#
+# client = Client(transport)
+
+# (2)
+# Or you can use the PythonStdioTransport and give it the path to the server script
+# client = Client(transport=PythonStdioTransport(script_path="math_mcp.py"))
+# ReferenceL https://gofastmcp.com/clients/transports#specialized-stdio-transports
+# With STDIO transport, your client:
+# * Starts the server as a subprocess when you connect
+# * Manages the server’s lifecycle (start, stop, restart)
+# * Controls the server’s environment and configuration
+# * Communicates through stdin/stdout pipes
+# This architecture enables powerful local integrations but requires understanding environment isolation and process management.
+# Reference: https://gofastmcp.com/clients/transports#stdio-transport
+
+
+# (3)
+# import the mcp server and create a client (In-Memory Transpor)
+from math_mcp import math_mcp
+client = Client(math_mcp)
 
 # async def test_tool(name: str):
 #     async with client:
@@ -29,8 +51,13 @@ async def run():
         resources = await client.list_resources()
         prompts = await client.list_prompts()
 
+        print(tools)
+
         result = await client.call_tool("add", {"a": 1, "b": 2})
         print(result)
+
+        prime_result = await client.read_resource("resource://primes/5")
+        print(prime_result)
 
 
 async def main():
