@@ -18,8 +18,8 @@ from typing import Any
 
 import httpx
 from dotenv import load_dotenv
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
+from fastmcp import Client as FastMCPClient
+from fastmcp.client.transports import StdioTransport
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -74,8 +74,7 @@ class Client:
     def __init__(self, name: str, config: dict[str, Any]) -> None:
         self.name: str = name
         self.config: dict[str, Any] = config
-        self.stdio_context: Any | None = None
-        self.session: ClientSession | None = None
+        self.client: FastMCPClient | None = None
         self._cleanup_lock: asyncio.Lock = asyncio.Lock()
         self.exit_stack: AsyncExitStack = AsyncExitStack()
 
@@ -86,17 +85,14 @@ class Client:
             raise ValueError("The command must be a valid string and cannot be None.")
 
 
-        server_params = StdioServerParameters(
+        server_params = StdioTransport(
             command=command,
             args=self.config["args"],
             env={**os.environ, **self.config["env"]} if self.config.get("env") else None,
         )
         try:
-            stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
-            read, write = stdio_transport
-            session = await self.exit_stack.enter_async_context(ClientSession(read, write))
-            await session.initialize()
-            self.session = session
+            self.client = FastMCPClient(transport=server_params)
+            await self.exit_stack.enter_async_context(self.client)
         except Exception as e:
             logging.error(f"Error initializing server {self.name}: {e}")
             await self.cleanup()
@@ -111,15 +107,14 @@ class Client:
         Raises:
             RuntimeError: If the server is not initialized.
         """
-        if not self.session:
+        if not self.client:
             raise RuntimeError(f"Server {self.name} not initialized")
 
-        tools_response = await self.session.list_tools()
+        tools_response = await self.client.list_tools()
         tools = []
 
-        for item in tools_response:
-            if isinstance(item, tuple) and item[0] == "tools":
-                tools.extend(Tool(tool.name, tool.description, tool.inputSchema, tool.title) for tool in item[1])
+        for tool in tools_response:
+            tools.append(Tool(tool.name, tool.description or "", tool.inputSchema, tool.title))
 
         return tools
 
@@ -145,16 +140,24 @@ class Client:
             RuntimeError: If server is not initialized.
             Exception: If tool execution fails after all retries.
         """
-        if not self.session:
+        if not self.client:
             raise RuntimeError(f"Server {self.name} not initialized")
 
         attempt = 0
         while attempt < retries:
             try:
                 logging.info(f"Executing {tool_name}...")
-                result = await self.session.call_tool(tool_name, arguments)
-
-                return result
+                result = await self.client.call_tool(tool_name, arguments)
+                
+                # Extract text content from the result
+                output: list[str] = []
+                for content in result.content:
+                    if content.type == "text":
+                        output.append(content.text)
+                    elif content.type == "image":
+                        output.append(f"[Image: {content.mimeType}]")
+                
+                return "\n".join(output)
 
             except Exception as e:
                 attempt += 1
@@ -171,8 +174,7 @@ class Client:
         async with self._cleanup_lock:
             try:
                 await self.exit_stack.aclose()
-                self.session = None
-                self.stdio_context = None
+                self.client = None
             except Exception as e:
                 logging.error(f"Error during cleanup of server {self.name}: {e}")
 
@@ -197,7 +199,7 @@ class Tool:
         Returns:
             A formatted string describing the tool.
         """
-        args_desc = []
+        args_desc: list[str] = []
         if "properties" in self.input_schema:
             for param_name, param_info in self.input_schema["properties"].items():
                 arg_desc = f"- {param_name}: {param_info.get('description', 'No description')}"
