@@ -1,21 +1,21 @@
 {
     "mcpServers": {
-        "groq": {
+        "puppeteer": {
             "command": "npx",
             "args": [
-                "groq-llm",
-                "--model",
-                "llama3.2",
-                "--port",
-                "8000",
-                "--host",
-                "localhost",
-                "--api-key",
-                "sk-proj-1234567890"
-            ],
-            "env": {
-                "GROQ_API_KEY": "sk-proj-1234567890"
-            }
+                "-y",
+                "@modelcontextprotocol/server-puppeteer"
+            ]
+        },
+        "postgres": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "mcp/postgres",
+                "postgresql://host.docker.internal:5432/mydb"
+            ]
         }
     }
 }
