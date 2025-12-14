@@ -7,12 +7,14 @@
                 "@modelcontextprotocol/server-puppeteer"
             ]
         },
-        "sqlite": {
-            "command": "uvx",
+        "postgres": {
+            "command": "docker",
             "args": [
-                "mcp-server-sqlite",
-                "--db-path",
-                "./sqlite.db"
+                "run",
+                "-i",
+                "--rm",
+                "mcp/postgres",
+                "postgresql://host.docker.internal:5432/mydb"
             ]
         }
     }
