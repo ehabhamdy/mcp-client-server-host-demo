@@ -386,22 +386,53 @@ Verify tool arguments against tool descriptions. dependencies is a list of task 
         logging.info(f"Plan response: {response}")
 
         try:
-            # Clean json
             import re
-            pattern = r"^```(?:\s*json)?\s*(.*?)\s*```$"
-            clean_response = re.sub(pattern, r"\1", response, flags=re.DOTALL | re.IGNORECASE).strip()
-            
-            plan_data = json.loads(clean_response)
             tasks = []
-            for item in plan_data:
-                tasks.append(Task(
-                    id=item["id"],
-                    description=item["description"],
-                    tool_name=item.get("tool_name"),
-                    tool_args=item.get("tool_args"),
-                    dependencies=item.get("dependencies", [])
-                ))
-            return tasks
+            
+            # Helper to parse tasks from a string
+            def parse_tasks(json_str: str) -> list[Task]:
+                data = json.loads(json_str)
+                parsed_tasks = []
+                for item in data:
+                    parsed_tasks.append(Task(
+                        id=item["id"],
+                        description=item["description"],
+                        tool_name=item.get("tool_name"),
+                        tool_args=item.get("tool_args"),
+                        dependencies=item.get("dependencies", [])
+                    ))
+                return parsed_tasks
+
+            # Strategy 1: Look for JSON code blocks
+            # Use non-greedy match .*? to capture individual blocks
+            code_blocks = re.findall(r"```(?:json)?\s*(\[.*?\])\s*```", response, re.DOTALL | re.IGNORECASE)
+            
+            if code_blocks:
+                # Try the last block first (often the 'refactored' or final version)
+                for block in reversed(code_blocks):
+                    try:
+                        tasks = parse_tasks(block)
+                        if tasks: return tasks
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        continue
+            
+            # Strategy 2: Look for the outermost array structure if no code blocks found or they failed
+            # Find first '[' and last ']'
+            start_idx = response.find('[')
+            end_idx = response.rfind(']')
+            
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                try:
+                    possible_json = response[start_idx : end_idx + 1]
+                    tasks = parse_tasks(possible_json)
+                    if tasks: return tasks
+                except (json.JSONDecodeError, KeyError, TypeError) as e:
+                    logging.warning(f"Failed to parse raw extracted JSON: {e}")
+
+            # If we're here, we failed to extract/parse
+            logging.error("Could not find valid JSON plan in response.")
+            return []
+
         except Exception as e:
             logging.error(f"Failed to parse plan: {e}")
             return []
