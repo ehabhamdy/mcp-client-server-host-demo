@@ -239,34 +239,34 @@ class LLMClient:
         Raises:
             httpx.RequestError: If the request to the LLM fails.
         """
-        # url = "https://api.groq.com/openai/v1/chat/completions"
-        url = "https://claude.vocareum.com/v1/chat/completions"
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        # url = "https://claude.vocareum.com/v1/chat/completions"
 
-        # headers = {
-        #     "Content-Type": "application/json",
-        #     "Authorization": f"Bearer {self.api_key}",
-        # }
         headers = {
             "Content-Type": "application/json",
-            "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01"
-        } 
-
-        # payload = {
-        #     "messages": messages,
-        #     "model": "meta-llama/llama-4-scout-17b-16e-instruct",
-        #     "temperature": 0.7,
-        #     "max_tokens": 4096,
-        #     "top_p": 1,
-        #     "stream": False,
-        #     "stop": None,
-        # }
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        # headers = {
+        #     "Content-Type": "application/json",
+        #     "x-api-key": self.api_key,
+        #     "anthropic-version": "2023-06-01"
+        # } 
 
         payload = {
-            "model": "claude-sonnet-4-5-20250929",
-            "max_tokens": 1024,
-            "messages": messages
+            "messages": messages,
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+            "temperature": 0.7,
+            "max_tokens": 4096,
+            "top_p": 1,
+            "stream": False,
+            "stop": None,
         }
+
+        # payload = {
+        #     "model": "claude-sonnet-4-5-20250929",
+        #     "max_tokens": 1024,
+        #     "messages": messages
+        # }
 
         try:
             with httpx.Client() as client:
