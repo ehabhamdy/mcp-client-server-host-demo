@@ -330,8 +330,6 @@ class LLMClient:
 
             return f"I encountered an error: {error_message}. Please try again or rephrase your request."
 
-
-
 class Agent:
     """Proactive agent that plans and executes tasks to achieve a goal."""
 
