@@ -16,11 +16,30 @@ data = {
     "max_tokens": 1024,
     "messages": [
         {"role": "system", "content": "You are a helpful assistant. always start with \"Hi Dear\""},
-        {"role": "user", "content": "Hello, Claude!"}
+        {"role": "user", "content": "Hello, Claude! what is are the tools you have access to?"}
+    ],
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "get_stock_price",
+                "description": "Get the current stock price for a given ticker symbol.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "ticker": {
+                            "type": "string",
+                            "description": "The stock ticker symbol, e.g. AAPL for Apple Inc."
+                        }
+                        },
+                    "required": ["ticker"]
+                }
+            }
+        }
     ]
 }
 
 response = requests.post(url, headers=headers, json=data)
 result = response.json()
-# print(result)
+print(result)
 print(result["choices"][0]["message"]["content"])

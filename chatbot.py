@@ -269,10 +269,12 @@ Arguments:
     def to_dict(self) -> dict[str, Any]:
         """Convert tool to dictionary for API usage."""
         return {
-            "type": "object",
-            "name": self.name,
-            "description": self.description,
-            "parameters": self.input_schema,
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.input_schema,
+            },
         }
 
 class LLMClient:
