@@ -284,20 +284,20 @@ class LLMClient:
         Raises:
             httpx.RequestError: If the request to the LLM fails.
         """
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        # url = "https://claude.vocareum.com/v1/chat/completions"
+        url_groq = "https://api.groq.com/openai/v1/chat/completions"
+        url_vocareum = "https://claude.vocareum.com/v1/chat/completions"
 
-        headers = {
+        headers_groq = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
         }
-        # headers = {
-        #     "Content-Type": "application/json",
-        #     "x-api-key": self.api_key,
-        #     "anthropic-version": "2023-06-01"
-        # } 
+        headers_vocareum = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01"
+        } 
 
-        payload = {
+        payload_groq = {
             "messages": messages,
             "model": "meta-llama/llama-4-scout-17b-16e-instruct",
             "temperature": 0.7,
@@ -307,15 +307,15 @@ class LLMClient:
             "stop": None,
         }
 
-        # payload = {
-        #     "model": "claude-sonnet-4-5-20250929",
-        #     "max_tokens": 1024,
-        #     "messages": messages
-        # }
+        payload_vocareum = {
+            "model": "claude-sonnet-4-5-20250929",
+            "max_tokens": 1024,
+            "messages": messages
+        }
 
         try:
             with httpx.Client() as client:
-                response = client.post(url, headers=headers, json=payload)
+                response = client.post(url_vocareum, headers=headers_vocareum, json=payload_vocareum)
                 response.raise_for_status()
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
