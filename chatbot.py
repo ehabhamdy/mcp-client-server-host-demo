@@ -266,13 +266,22 @@ Arguments:
 
         return output
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert tool to dictionary for API usage."""
+        return {
+            "type": "object",
+            "name": self.name,
+            "description": self.description,
+            "parameters": self.input_schema,
+        }
+
 class LLMClient:
     """Manages communication with the LLM provider."""
 
     def __init__(self, api_key: str) -> None:
         self.api_key: str = api_key
 
-    def get_response(self, messages: list[dict[str, str]]) -> str:
+    def get_response(self, messages: list[dict[str, str]], tools: list[Tool]) -> str:
         """Get a response from the LLM.
 
         Args:
@@ -284,20 +293,20 @@ class LLMClient:
         Raises:
             httpx.RequestError: If the request to the LLM fails.
         """
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        # url = "https://claude.vocareum.com/v1/chat/completions"
+        url_groq = "https://api.groq.com/openai/v1/chat/completions"
+        url_claude = "https://claude.vocareum.com/v1/chat/completions"
 
-        headers = {
+        headers_groq = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
         }
-        # headers = {
-        #     "Content-Type": "application/json",
-        #     "x-api-key": self.api_key,
-        #     "anthropic-version": "2023-06-01"
-        # } 
+        headers_claude = {
+            "Content-Type": "application/json",
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01"
+        } 
 
-        payload = {
+        payload_groq = {
             "messages": messages,
             "model": "meta-llama/llama-4-scout-17b-16e-instruct",
             "temperature": 0.7,
@@ -305,17 +314,19 @@ class LLMClient:
             "top_p": 1,
             "stream": False,
             "stop": None,
+            "tools": [tool.to_dict() for tool in tools] 
         }
 
-        # payload = {
-        #     "model": "claude-sonnet-4-5-20250929",
-        #     "max_tokens": 1024,
-        #     "messages": messages
-        # }
+        payload_claude = {
+            "model": "claude-sonnet-4-5-20250929",
+            "max_tokens": 1024,
+            "messages": messages,
+            "tools": [tool.to_dict() for tool in tools]
+        }
 
         try:
             with httpx.Client() as client:
-                response = client.post(url, headers=headers, json=payload)
+                response = client.post(url_claude, headers=headers_claude, json=payload_claude)
                 response.raise_for_status()
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
@@ -356,8 +367,7 @@ class Agent:
 
         system_prompt = f"""You are an AI agent that creates execution plans.
 
-Available tools:
-{tools_description}
+Consider the given tools and their descriptions to create a plan to achieve the user's goal.
 
 Relevant facts from memory:
 {facts_str}
@@ -380,7 +390,7 @@ Verify tool arguments against tool descriptions. dependencies is a list of task 
             {"role": "user", "content": f"Goal: {goal}"}
         ]
 
-        response = self.llm_client.get_response(messages)
+        response = self.llm_client.get_response(messages, self.available_tools)
         logging.info(f"Plan response: {response}")
 
         try:
