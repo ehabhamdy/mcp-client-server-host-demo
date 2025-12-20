@@ -286,6 +286,7 @@ class LLMClient:
         """
         url_groq = "https://api.groq.com/openai/v1/chat/completions"
         url_vocareum = "https://claude.vocareum.com/v1/chat/completions"
+        url_openai = "https://api.openai.com/v1/chat/completions"
 
         headers_groq = {
             "Content-Type": "application/json",
@@ -296,6 +297,10 @@ class LLMClient:
             "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01"
         } 
+        headers_openai = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
 
         payload_groq = {
             "messages": messages,
@@ -313,9 +318,15 @@ class LLMClient:
             "messages": messages
         }
 
+        payload_openai = {
+            "model": "gpt-4o",
+            "max_tokens": 1024,
+            "messages": messages
+        }
+
         try:
             with httpx.Client() as client:
-                response = client.post(url_vocareum, headers=headers_vocareum, json=payload_vocareum)
+                response = client.post(url_openai, headers=headers_openai, json=payload_openai)
                 response.raise_for_status()
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
@@ -480,7 +491,7 @@ Verify tool arguments against tool descriptions. dependencies is a list of task 
 
     async def run(self, goal: str) -> str:
         """Run the agent loop."""
-        await self.initialize()
+        # await self.initialize()
         
         plan = await self.create_plan(goal)
         if not plan:
@@ -537,7 +548,8 @@ async def run() -> None:
     memory = AgentMemory()
     
     agent = Agent(clients, llm_client, memory)
-    
+    await agent.initialize()
+
     try:
         while True:
             try:
